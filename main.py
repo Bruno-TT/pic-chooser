@@ -1,4 +1,4 @@
-import pygame, glob, random
+import pygame, glob, random, time
 from shutil import copy2
 from os import remove
 from pygame.locals import K_UP, K_DOWN, KEYDOWN, FULLSCREEN
@@ -6,29 +6,40 @@ pygame.init()
 
 #initialise the display
 bg=(0,0,0)
+green=(0,255,0)
+red=(255,0,0)
+orange=(255,165,0)
+width, height=1920, 1080
 display_surface=pygame.display.set_mode((0,0), FULLSCREEN)
 
 #directories to move the images to
 KEEP="like/"
 DELETE="dislike/"
 
+def flash(colour):
+    #flash green
+    display_surface.fill(colour)
+
+    #update the display
+    pygame.display.update()
+    
+    #flash it for .1 seconds
+    time.sleep(0.1)
+
+
 #modified from http://www.pygame.org/pcr/transform_scale/
-def aspect_scale(img,bx,by):
-    """ Scales 'img' to fit into box bx/by.
-     This method will retain the original image's aspect ratio """
+def get_scaled_coords(img,bx,by):
     ix,iy = img.get_size()
     if ix > iy:
-        # fit to width
         scale_factor = bx/float(ix)
         sy = scale_factor * iy
         if sy > by:
             scale_factor = by/float(iy)
-            sx = scale_factor * ix
+            sx = scale_factor*ix
             sy = by
         else:
             sx = bx
     else:
-        # fit to height
         scale_factor = by/float(iy)
         sx = scale_factor * ix
         if sx > bx:
@@ -38,10 +49,12 @@ def aspect_scale(img,bx,by):
         else:
             sy = by
 
-    return pygame.transform.scale(img, (int(sx), int(sy)))
+    return (int(sx), int(sy))
 
 
+#function to display an image
 def display_image():
+
     #the current image path
     global image_path
 
@@ -54,11 +67,41 @@ def display_image():
     #load it
     image=pygame.image.load(image_path)
 
-    #resize image but keep aspect ratio
-    scaled_image=aspect_scale(image, 1920, 1080)
+    #calculate 
+    new_size=get_scaled_coords(image, width, height) #width,height
+
+    #rescale the image
+    scaled_image=pygame.transform.scale(image, new_size)
+
+    #if the width is entirely filled
+    if new_size[0]==width:
+        
+        #blip to x=0 obviously
+        x=0
+
+        #calculate the y value so that it's blipped centrally
+        y=(height-new_size[1])/2
+    
+    #see above
+    elif new_size[1]==height:
+        x=(width-new_size[0])/2
+        y=0
+    
+    #probably unreachable, but if neither dimension are filled (most likely a rounding error)
+    #once I'm happy this is well written, then I'll delete this
+    else:
+
+        #print them out, hopefully it's just a case of a +-1 rounding error
+        print(new_size)
+
+        #debug blip to the top left corner
+        x,y=0,0
+
+        #flash orange
+        flash(orange)
 
     #display the image
-    display_surface.blit(scaled_image, (0,0))
+    display_surface.blit(scaled_image, (x,y))
 
 #called when up gets pressed
 def up_pressed():
@@ -71,6 +114,9 @@ def up_pressed():
 
     print("moved {} to {}".format(image_path, KEEP))
 
+    #flash green
+    flash(green)
+
     #get a new image
     display_image()
 
@@ -79,6 +125,7 @@ def down_pressed():
     copy2(image_path, DELETE)
     remove(image_path)
     print("moved {} to {}".format(image_path, DELETE))
+    flash(red)
     display_image()
 
 #display the initial image
